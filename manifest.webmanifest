@@ -1,11 +1,10 @@
 {
-  "name": "Hostess Stand",
+  "name": "Robert's Host Stand",
   "short_name": "Host Stand",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f4efe7",
-  "theme_color": "#111111",
+  "background_color": "#07090a",
+  "theme_color": "#07090a",
   "icons": [
     {
       "src": "icon-180.png",
