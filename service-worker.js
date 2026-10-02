@@ -1,4 +1,4 @@
-const CACHE_NAME = "roberts-comfort-food-host-stand-v1";
+const CACHE_NAME = 'roberts-comfort-food-v66';
 const ASSETS = ["./","./index.html","./manifest.webmanifest","./icon-180.png","./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));

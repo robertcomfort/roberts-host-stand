@@ -21,6 +21,9 @@
 .roomChoice button,.roomSetup button,.setupChoices button{background:#145f73!important;color:#fff!important;border-color:#2e91aa!important}
 .datetime,.dateTime,.date-time,#dateTime,#clock,.settings{background:#49346f!important;color:#fff!important;border-color:#8063ad!important}
 
+
+/* v65 manager PIN preview */
+.managerGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.managerBox{border:3px solid;padding:12px;border-radius:16px;text-align:left}.managerBox label{display:block;font-size:22px;font-weight:900;margin-bottom:8px}.managerBox input{width:100%;font-size:28px;font-weight:900;letter-spacing:10px;text-align:center;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,.65);background:#111;color:#fff}.mgrCourtney{background:#51206f;border-color:#a96bd0}.mgrAlex{background:#185f46;border-color:#58c79d}.mgrBart{background:#8a4b12;border-color:#e5a25d}.mgrRobert{background:#6e2430;border-color:#dc7587}.managerHint{font-size:14px;opacity:.85;margin-top:4px}.managerActions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.managerActions button{font-size:18px;font-weight:900;padding:12px}
 </style>
 <style id="restart-clean-tables">
 .a4fix{display:none!important}
@@ -206,7 +209,7 @@ function setServerTime(n,k,v){
  if(k==='in')S.startTimes[n]=v;else S.endTimes[n]=v;
  render();
 }
-function showSettings(){let c=document.getElementById('modalCard');c.innerHTML='<h2>Shift Settings</h2><button onclick="newShift()">START NEW SHIFT</button><button onclick="closeModal()">CLOSE</button>';document.getElementById('modal').style.display='flex'}function newShift(){S={active:[],room:null,roomSide:null,occ:{},counts:{},assign:{},mode:'seat',hist:[],swapFirst:null,turn:0,startTimes:{},endTimes:{}};closeModal();render();toast('New shift ready')}function closeModal(){document.getElementById('modal').style.display='none'}
+function showSettings(){let c=document.getElementById('modalCard');c.innerHTML=`<h2>MANAGER ACCESS</h2><div class="managerHint">Select your clearly labeled manager box and enter your 4-digit PIN. PINs stay hidden.</div><div class="managerGrid"><div class="managerBox mgrCourtney"><label>COURTNEY</label><input type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div><div class="managerBox mgrAlex"><label>ALEX</label><input type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div><div class="managerBox mgrBart"><label>BART</label><input type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div><div class="managerBox mgrRobert"><label>ROBERT</label><input type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div></div><div class="managerActions"><button onclick="newShift()">START NEW SHIFT</button><button onclick="closeModal()">CLOSE</button></div>`;document.getElementById('modal').style.display='flex'}function newShift(){S={active:[],room:null,roomSide:null,occ:{},counts:{},assign:{},mode:'seat',hist:[],swapFirst:null,turn:0,startTimes:{},endTimes:{}};closeModal();render();toast('New shift ready')}function closeModal(){document.getElementById('modal').style.display='none'}
 function ensureFlippedRooms(){
  let f=document.getElementById('floor'),orig=f.querySelector('img:not(.floorHalf)');
  if(!orig||f.querySelector('.floorHalf'))return;
