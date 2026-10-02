@@ -141,8 +141,9 @@ const SECTION_PLANS={
  },
  B:{
   2:[
-   ['B14','B15','B16','B13','B12','B11','B4','B3'],
-   ['B10','B9','B8','B7','B6','B5','B2','B1']
+   
+   ['B5','B16','B15','B14','B13','B12','B11','B10'],
+   ['B9','B8','B7','B6','B4','B3','B2','B1']
   ],
   3:[
    ['B14','B15','B16','B13','B4'],
@@ -185,9 +186,42 @@ function managerAuth(nextFn){
    nextFn();
  };
 }
-function showServerManagerMenu(n){
- managerAuth(()=>{let c=document.getElementById('modalCard');c.innerHTML='<h2>'+n.toUpperCase()+' — SHIFT</h2><button onclick="endServerShift(\''+n+'\')">END SHIFT</button><button onclick="reassignServerTables(\''+n+'\')">REASSIGN TABLES</button><button onclick="moveServerSection(\''+n+'\')">MOVE SECTION / TABLES</button><button onclick="closeModal()">CANCEL</button>';});
+
+let managerSectionEdit=null;
+let managerSectionSnapshot=null;
+function beginManagerSectionEdit(n){
+  managerSectionEdit=n;
+  managerSectionSnapshot=JSON.parse(JSON.stringify(S.assign||{}));
+  closeModal(); render(); showManagerEditBar();
+  toast(n+' selected — tap tables to rearrange, then Confirm');
 }
+function showManagerEditBar(){
+  let old=document.getElementById('managerEditBar');if(old)old.remove();
+  if(!managerSectionEdit)return;
+  let b=document.createElement('div');b.id='managerEditBar';
+  b.style.cssText='position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:99999;background:#111;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 4px 18px #0008;display:flex;gap:10px;align-items:center;font-weight:900';
+  b.innerHTML='<span>EDITING '+managerSectionEdit.toUpperCase()+' — TAP TABLES</span><button onclick="confirmManagerSectionEdit()">CONFIRM</button><button onclick="cancelManagerSectionEdit()">CANCEL</button>';
+  document.body.appendChild(b);
+}
+function confirmManagerSectionEdit(){
+  saveLive();let n=managerSectionEdit;managerSectionEdit=null;managerSectionSnapshot=null;
+  let b=document.getElementById('managerEditBar');if(b)b.remove();render();toast(n+' section saved');
+}
+function cancelManagerSectionEdit(){
+  if(managerSectionSnapshot)S.assign=managerSectionSnapshot;
+  managerSectionEdit=null;managerSectionSnapshot=null;
+  let b=document.getElementById('managerEditBar');if(b)b.remove();render();toast('Section changes canceled');
+}
+function managerToggleTable(t){
+  if(!managerSectionEdit)return false;
+  if(S.assign[t]===managerSectionEdit)delete S.assign[t];else S.assign[t]=managerSectionEdit;
+  render();showManagerEditBar();return true;
+}
+
+function showServerManagerMenu(n){
+ managerAuth(()=>beginManagerSectionEdit(n));
+}
+
 function endServerShift(n){
  let occupied=Object.keys(S.occ||{}).filter(t=>S.occ[t]&&S.assign[t]===n);
  if(occupied.length){toast('Reassign '+occupied.length+' active table'+(occupied.length===1?'':'s')+' before ending '+n+'\'s shift');return}
@@ -211,8 +245,8 @@ function showTableMovePicker(n,title){
  if(!mine.length||!others.length){c.innerHTML='<h2>'+title+'</h2><div class="managerHint">'+(!mine.length?n+' has no assigned tables.':'Another active server is needed to receive tables.')+'</div><button onclick="showServerManagerMenu(\''+n+'\')">BACK</button>';return}
  c.innerHTML='<h2>'+title+' — '+n.toUpperCase()+'</h2><div class="managerHint">Choose the server receiving the tables, then tap individual tables. Use MOVE ALL for the whole section.</div><select id="moveTarget" style="font-size:22px;width:90%;padding:10px;margin:8px 0">'+others.map(x=>'<option>'+x+'</option>').join('')+'</select><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0">'+mine.map(t=>'<button onclick="moveOneTable(\''+n+'\',\''+t+'\')">'+t+'</button>').join('')+'</div><button onclick="moveAllTables(\''+n+'\')">MOVE ALL / WHOLE SECTION</button><button onclick="closeModal()">DONE</button>';
 }
-function moveOneTable(from,t){let to=document.getElementById('moveTarget').value;S.assign[t]=to;render();showTableMovePicker(from,'REASSIGN / MOVE TABLES');toast(t+' moved to '+to)}
-function moveAllTables(from){let to=document.getElementById('moveTarget').value;Object.keys(S.assign||{}).forEach(t=>{if(S.assign[t]===from)S.assign[t]=to});closeModal();render();toast(from+' section moved to '+to)}
+function moveOneTable(from,t){let to=document.getElementById('moveTarget').value;S.assign[t]=to;saveLive();render();showTableMovePicker(from,'REASSIGN / MOVE TABLES');toast(t+' moved to '+to)}
+function moveAllTables(from){let to=document.getElementById('moveTarget').value;Object.keys(S.assign||{}).forEach(t=>{if(S.assign[t]===from)S.assign[t]=to});saveLive();closeModal();render();toast(from+' section moved to '+to)}
 
 function chooseRoom(kind){let need=kind==='both'?4:kind==='one3'?3:2;if(S.active.length!==need){toast('Select exactly '+need+' servers first');return};if(kind==='both'){S.room=kind;S.roomSide='both';activateRoom(kind)}else{showRoomPicker(kind)}}
 function showRoomPicker(kind){let m=document.getElementById('modal'),c=document.getElementById('modalCard');c.innerHTML='<h2>Which dining room?</h2><button onclick="pickSide(\''+kind+'\',\'A\')">DINING ROOM A</button><button onclick="pickSide(\''+kind+'\',\'B\')">DINING ROOM B</button><button onclick="closeModal()">CANCEL</button>';m.style.display='flex'}
@@ -220,7 +254,7 @@ function pickSide(k,s){S.room=k;S.roomSide=s;closeModal();activateRoom(k)}
 function activateRoom(k){S.occ={};S.counts={};S.active.forEach(n=>S.counts[n]=0);S.turn=0;assignSections();render();toast(k==='both'?'Both rooms ready':('Dining Room '+S.roomSide+' ready'))}
 function activeTables(){if(!S.room)return[];if(S.room==='both')return A.concat(B);return S.roomSide==='A'?A:B}
 function setMode(m){S.mode=m;S.swapFirst=null;render()}
-function tableTap(t){
+function tableTap(t){if(managerSectionEdit){managerToggleTable(t);return;}
  if(!activeTables().includes(t)){toast('Choose room setup first');return}
  if(S.mode==='reassign'&&S.reassign){
    if(S.assign[t]!==S.reassign.from){toast('Choose a table assigned to '+S.reassign.from);return}
@@ -364,7 +398,27 @@ function saveWeekAndClose(){
   toast('Week saved — today’s scheduled server times updated in Section 1');
 }
 
-function showSettings(){let c=document.getElementById('modalCard');c.innerHTML=`<h2>SETTINGS</h2><button onclick="showWeeklySchedule()">WEEKLY SERVER SCHEDULE</button><button onclick="showHistoryMenu()">HISTORY — DAY / MONTH</button><button onclick="showManagerAccess()">MANAGER ACCESS</button><button onclick="closeModal()">CLOSE</button>`;document.getElementById('modal').style.display='flex'}
+
+function managerEndOfDay(){
+ managerAuth(()=>{
+  let c=document.getElementById('modalCard');
+  c.innerHTML='<h2>END OF DAY</h2><div class="managerHint">Save today’s totals and history, then clear the active floor for the next business day.<br><b>Your weekly server schedule will NOT be erased.</b></div><button onclick="confirmEndOfDay()">CONFIRM END OF DAY</button><button onclick="closeModal()">CANCEL</button>';
+  document.getElementById('modal').style.display='flex';
+ });
+}
+function confirmEndOfDay(){
+ try{
+  if(typeof saveDailyHistory==='function') saveDailyHistory();
+  else if(typeof saveHistory==='function') saveHistory();
+ }catch(e){}
+ let keepStart=S.startTimes||{}, keepEnd=S.endTimes||{};
+ S.assign={}; S.seated={}; S.covers={}; S.tablesServed={}; S.nextIndex=0;
+ saveLive();
+ closeModal(); render();
+ toast('End of Day saved — floor cleared; weekly schedule kept');
+}
+
+function showSettings(){let c=document.getElementById('modalCard');c.innerHTML=`<h2>SETTINGS</h2><button onclick="showWeeklySchedule()">WEEKLY SERVER SCHEDULE</button><button onclick="managerEndOfDay()">END OF DAY</button><button onclick="showHistoryMenu()">HISTORY — DAY / MONTH</button><button onclick="showManagerAccess()">MANAGER ACCESS</button><button onclick="closeModal()">CLOSE</button>`;document.getElementById('modal').style.display='flex'}
 function showManagerAccess(){let pins=getManagerPins(),c=document.getElementById('modalCard');c.innerHTML=`<h2>MANAGER ACCESS</h2><div class="managerHint">Each manager can set a private 4-digit PIN. Digits stay masked.</div><div class="managerGrid"><div class="managerBox mgrCourtney"><label>COURTNEY</label><input id="pinCourtney" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="${pins.Courtney||''}"></div><div class="managerBox mgrAlex"><label>ALEX</label><input id="pinAlex" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="${pins.Alex||''}"></div><div class="managerBox mgrBart"><label>BART</label><input id="pinBart" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="${pins.Bart||''}"></div><div class="managerBox mgrRobert"><label>ROBERT</label><input id="pinRobert" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="${pins.Robert||''}"></div></div><div class="managerActions"><button onclick="saveManagerPins()">SAVE PINS</button><button onclick="newShift()">START NEW SHIFT</button><button onclick="showSettings()">BACK TO SETTINGS</button></div>`;document.getElementById('modal').style.display='flex'}
 function saveManagerPins(){let p={Courtney:document.getElementById('pinCourtney').value,Alex:document.getElementById('pinAlex').value,Bart:document.getElementById('pinBart').value,Robert:document.getElementById('pinRobert').value};if(Object.values(p).some(v=>v&&!/^\d{4}$/.test(v))){toast('Each PIN must be exactly 4 digits');return}localStorage.setItem('rcfManagerPins',JSON.stringify(p));toast('Manager PINs saved')}
 function newShift(){archiveCurrentDay();S={active:[],room:null,roomSide:null,occ:{},counts:{},guestCounts:{},served:[],assign:{},mode:'seat',hist:[],swapFirst:null,turn:0,startTimes:{},endTimes:{}};closeModal();render();toast('New shift ready — previous day saved')}
