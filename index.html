@@ -325,10 +325,9 @@ function onFloorServers(){
 function nextServer(){
  let avail=onFloorServers();
  if(!avail.length)return null;
- let min=Math.min(...avail.map(n=>S.counts[n]||0));
  for(let i=0;i<S.active.length;i++){
    let n=S.active[(S.turn+i)%S.active.length];
-   if(avail.includes(n)&&(S.counts[n]||0)===min)return n;
+   if(avail.includes(n))return n;
  }
  return avail[0];
 }
