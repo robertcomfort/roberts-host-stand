@@ -1,1 +1,13 @@
-{"name":"Robert's Host Stand","short_name":"Robert's Host","start_url":"./index.html","display":"standalone","background_color":"#090b0d","theme_color":"#090b0d","icons":[{"src":"icon-180.png","sizes":"180x180","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"}]}
+{
+  "name": "Robert's Host Stand",
+  "short_name": "Robert's Host",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090b0d",
+  "theme_color": "#090b0d",
+  "icons": [
+    {"src":"icon-180.png","sizes":"180x180","type":"image/png"},
+    {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}
