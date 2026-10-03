@@ -27,8 +27,6 @@
 
 .calNav{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin:10px 0}.calNav button{margin:0;font-size:13px;padding:10px 6px}.calNav b{text-align:center;font-size:18px}.calWeek,.calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.calWeek span{text-align:center;font-weight:900;font-size:12px;padding:5px 0}.calBlank{min-height:62px}.calDay{min-height:68px;margin:0!important;padding:5px!important;border-radius:8px!important;background:#f3f3f3!important;color:#555!important;border:1px solid #ddd!important;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}.calDay b{font-size:18px}.calDay span{font-size:10px;line-height:1.1}.calDay.hasHistory{background:#e8f1ec!important;color:#163a2b!important;border:2px solid #5b806c!important}.calDay:disabled{opacity:.48}.calDay.hasHistory:disabled{opacity:1}@media(max-width:600px){.calDay{min-height:58px}.calDay span{font-size:9px}.calNav b{font-size:15px}}
 #floor .tabletop.reassignSelected{outline:6px solid #111;outline-offset:3px;filter:brightness(1.18);transform:scale(1.04);z-index:30}
-
-.squareStatus{padding:10px;border-radius:10px;font-weight:900;text-align:center;margin:8px 0 14px}.squareLive{background:#173d27;border:2px solid #4da965}.squareBad{background:#5b2020;border:2px solid #d36b6b}.managerSelectGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.managerSelectGrid button{border-radius:16px;padding:18px 10px;font-size:21px;font-weight:900;color:#fff;border:3px solid}.managerPinArea{margin-top:14px;background:#101214;border:1px solid #444;border-radius:16px;padding:16px;text-align:center}.managerPinArea input{width:220px;max-width:100%;background:#050505;color:white;border:2px solid #777;border-radius:12px;padding:12px;text-align:center;font-size:28px;letter-spacing:10px}
 </style>
 <style id="restart-clean-tables">
 .a4fix{display:none!important}
@@ -101,10 +99,7 @@
 const people=[['Courtney','courtney','Floor Lead'],['Lindsay','lindsay',''],['Sophie','sophie',''],['Savannah','savannah',''],['Mark','mark',''],['Ashley','ashley',''],['Alisha','alisha',''],['Dezza','dezza','']];
 let S={active:[],room:null,roomSide:null,occ:{},counts:{},guestCounts:{},served:[],assign:{},mode:'seat',hist:[],swapFirst:null,turn:0,startTimes:{},endTimes:{},onBreak:{}};
 const SQUARE_SCHEDULE_URL='https://roberts-comfort-food-square.russellllc26.workers.dev/schedule';
-let squareScheduledNames=[];
-let squareSyncStatus='connecting';
-let selectedManager='Courtney';
-const SQUARE_NAME_MAP={'sophia nottingham':'Sophie'};
+let squareScheduledNames=null;
 const boxes={A12:[3.5,26,6.5,20],A13:[10.4,26,6.5,20],A14:[17.3,26,6.5,20],A15:[24.2,26,6.5,20],A2:[33.1,3,6.7,18],A1:[40.2,3,6.7,18],A4:[34.1,37,6.1,20],A3:[42.1,37,6.1,20],A11:[4.5,65,6.1,19],A10:[10.9,65,6.1,19],A9:[17.3,65,6.1,19],A8:[23.7,65,6.1,19],A7:[30.1,65,6.1,19],A6:[36.5,65,6.1,19],A16:[42.9,65,6.1,19],A5:[49.3,65,6.1,19],B13:[54.0,22,5.5,19],B12:[59.5,22,5.5,19],B11:[65,22,5.5,19],B10:[70.5,22,5.5,19],B9:[76,22,5.5,19],B8:[81.5,22,5.5,19],B7:[87,22,5.5,19],B6:[92.5,22,5.5,19],B14:[53.2,49,6.1,21],B15:[59.5,49,6.1,21],B16:[65.8,49,6.1,21],B5:[72.2,47,8,23],B4:[81.5,48,7,21],B3:[90.5,48,7,21],B1:[81.6,73,7,20],B2:[90.8,73,7,20]};
 const A=Object.keys(boxes).filter(x=>x[0]=='A'),B=Object.keys(boxes).filter(x=>x[0]=='B');
 
@@ -174,13 +169,13 @@ function assignSections(){
  }else assignPlanned(S.roomSide,S.active);
 }
 
-function renderServers(){let el=document.getElementById('servers');el.innerHTML='';if(squareSyncStatus==='connecting'){el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px">CONNECTING TO SQUARE…</div>';return}if(squareSyncStatus==='unavailable'){el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px;color:#ff9b9b">SQUARE SCHEDULE UNAVAILABLE</div>';return}let list=people.filter(p=>squareScheduledNames.includes(p[0]));list.sort((a,b)=>(timeMin(S.startTimes[a[0]])??9999)-(timeMin(S.startTimes[b[0]])??9999));list.forEach(([n,c,r])=>{let b=document.createElement('button');b.className='server '+c+(S.active.includes(n)?' active':'');let st=(S.startTimes[n]||'NOT SET'),en=(S.endTimes[n]||'NOT SET'),br=S.onBreak&&S.onBreak[n];b.innerHTML='<span style="display:block;font-weight:1000;font-size:1.08em">'+n+'</span>'+(r?'<small style="display:block;font-weight:900">('+r+')</small>':'')+'<span style="display:block;margin-top:5px;font-size:.92em;font-weight:1000;line-height:1.15">SHIFT: '+st+' – '+en+(br?' • ON BREAK':'')+'</span>';b.onclick=()=>serverNameTap(n);el.appendChild(b)});if(!list.length)el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px">No servers scheduled today.</div>'}
+function renderServers(){let el=document.getElementById('servers');el.innerHTML='';let list=people.filter(p=>!squareScheduledNames||squareScheduledNames.includes(p[0]));list.sort((a,b)=>(timeMin(S.startTimes[a[0]])??9999)-(timeMin(S.startTimes[b[0]])??9999));list.forEach(([n,c,r])=>{let b=document.createElement('button');b.className='server '+c+(S.active.includes(n)?' active':'');let st=(S.startTimes[n]||'NOT SET'),en=(S.endTimes[n]||'NOT SET'),br=S.onBreak&&S.onBreak[n];b.innerHTML='<span style="display:block;font-weight:1000;font-size:1.08em">'+n+'</span>'+(r?'<small style="display:block;font-weight:900">('+r+')</small>':'')+'<span style="display:block;margin-top:5px;font-size:.92em;font-weight:1000;line-height:1.15">SHIFT: '+st+' – '+en+(br?' • ON BREAK':'')+'</span>';b.onclick=()=>serverNameTap(n);el.appendChild(b)});if(!list.length)el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px">No servers scheduled today.</div>'}
 function sortActiveByStart(){S.active.sort((a,b)=>(timeMin(S.startTimes[a])??9999)-(timeMin(S.startTimes[b])??9999))}
 function serverNameTap(n){
  if(S.room && S.active.includes(n)){showServerManagerMenu(n);return}
  toggleServer(n)
 }
-function toggleServer(n){let i=S.active.indexOf(n);if(i>=0){S.active.splice(i,1);if(S.turn>=S.active.length)S.turn=0}else{S.active.push(n);sortActiveByStart()}render();toast(n+(i>=0?' removed':' selected'))}
+function toggleServer(n){let i=S.active.indexOf(n);if(i>=0)S.active.splice(i,1);else{S.active.push(n);sortActiveByStart()}S.room=null;S.roomSide=null;S.occ={};S.counts={};S.assign={};S.turn=0;render();toast(n+(i>=0?' removed':' selected'))}
 
 function getManagerPins(){try{return JSON.parse(localStorage.getItem('rcfManagerPins')||'{}')}catch(e){return {}}}
 function managerAuth(nextFn){
@@ -306,19 +301,7 @@ function chooseParty(t,n,before){
  let c=document.getElementById('modalCard');c.innerHTML='<h2>Seat '+t+'</h2><p><b>'+n+'</b> • Select party size</p><select id="partyPick" size="6" style="font-size:24px;width:100%;padding:8px">'+opts+'</select><button onclick="confirmSeat(\''+t+'\',\''+n+'\')">SEAT PARTY</button><button onclick="closeModal()">CANCEL</button>';
  window._seatBefore=before;document.getElementById('modal').style.display='flex';
 }
-function confirmSeat(t,n){
- let size=parseInt(document.getElementById('partyPick').value||1);
- if(n==='Mark'&&size>=6){
-   let avail=onFloorServers().filter(x=>x!=='Mark');
-   let replacement=null;
-   for(let i=1;i<=S.active.length;i++){let x=S.active[(S.turn+i)%S.active.length];if(avail.includes(x)){replacement=x;break}}
-   if(!replacement){toast('No eligible server available for this 6+ top');return}
-   n=replacement;
- } else {
-   let idx=S.active.indexOf(n);if(idx>=0)S.turn=(idx+1)%Math.max(1,S.active.length);
- }
- S.occ[t]={server:n,party:size,seatedAt:Date.now()};S.counts[n]=(S.counts[n]||0)+1;S.guestCounts[n]=(S.guestCounts[n]||0)+size;S.served.push({table:t,server:n,party:size,time:Date.now()});S.hist.push(window._seatBefore);closeModal();render()
-}
+function confirmSeat(t,n){let size=parseInt(document.getElementById('partyPick').value||1);n=nextServer(size);if(!n){toast('No eligible server is on the floor yet');return}S.occ[t]={server:n,party:size,seatedAt:Date.now()};S.counts[n]=(S.counts[n]||0)+1;S.guestCounts[n]=(S.guestCounts[n]||0)+size;S.served.push({table:t,server:n,party:size,time:Date.now()});let idx=S.active.indexOf(n);if(!(n!=='Mark'&&size>=6&&S.active[S.turn]==='Mark'))S.turn=(idx+1)%Math.max(1,S.active.length);S.hist.push(window._seatBefore);closeModal();render()}
 function editParty(t){let o=S.occ[t],old=o.party||0,opts='';for(let i=1;i<=20;i++)opts+='<option value="'+i+'" '+(i===old?'selected':'')+'>'+i+' guest'+(i===1?'':'s')+'</option>';let c=document.getElementById('modalCard');c.innerHTML='<h2>'+t+' • '+o.server+'</h2><p>Edit party size</p><select id="partyEdit" size="6" style="font-size:24px;width:100%;padding:8px">'+opts+'</select><button onclick="savePartyEdit(\''+t+'\')">SAVE</button><button onclick="closeModal()">CANCEL</button>';document.getElementById('modal').style.display='flex'}
 function savePartyEdit(t){let o=S.occ[t],v=parseInt(document.getElementById('partyEdit').value||o.party),diff=v-o.party;o.party=v;S.guestCounts[o.server]=(S.guestCounts[o.server]||0)+diff;let last=[...S.served].reverse().find(x=>x.table===t&&x.server===o.server);if(last)last.party=v;closeModal();render()}
 function occServer(v){return v&&typeof v==='object'?v.server:v}
@@ -334,12 +317,14 @@ function onFloorServers(){
    return true;
  });
 }
-function nextServer(){
+function nextServer(partySize){
  let avail=onFloorServers();
  if(!avail.length)return null;
  for(let i=0;i<S.active.length;i++){
-   let idx=(S.turn+i)%S.active.length,n=S.active[idx];
-   if(avail.includes(n)){S.turn=idx;return n;}
+   let n=S.active[(S.turn+i)%S.active.length];
+   if(!avail.includes(n))continue;
+   if(n==='Mark'&&partySize>=6)continue;
+   return n;
  }
  return null;
 }
@@ -391,9 +376,7 @@ function isoWithCentralOffset(d){
   let m=tz.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/),off='-05:00';if(m){let sign=m[1],hh=String(m[2]).padStart(2,'0'),mm=String(m[3]||'00').padStart(2,'0');off=sign+hh+':'+mm}
   return parts.year+'-'+parts.month+'-'+parts.day+'T00:00:00'+off;
 }
-function squareWeekBounds(){let now=new Date(),local=new Date(now.toLocaleString('en-US',{timeZone:'America/Chicago'}));local.setHours(0,0,0,0);let back=(local.getDay()-3+7)%7;local.setDate(local.getDate()-back);let end=new Date(local);end.setDate(end.getDate()+7);return {start:isoWithCentralOffset(local),end:isoWithCentralOffset(end)}}
-function normalizeName(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
-function matchSquarePerson(raw){let k=normalizeName(raw),mapped=SQUARE_NAME_MAP[k];if(mapped)return people.find(p=>p[0]===mapped);let first=k.split(' ')[0];return people.find(p=>normalizeName(p[0])===k||normalizeName(p[0])===first)}
+function squareWeekBounds(){let now=new Date(),local=new Date(now.toLocaleString('en-US',{timeZone:'America/Chicago'}));local.setHours(12,0,0,0);let back=(local.getDay()-3+7)%7;local.setDate(local.getDate()-back);let end=new Date(local);end.setDate(end.getDate()+7);return {start:isoWithCentralOffset(local),end:isoWithCentralOffset(end)}}
 function pick(obj,paths){for(let p of paths){let v=p.split('.').reduce((x,k)=>x&&x[k],obj);if(v!==undefined&&v!==null&&v!=='')return v}return null}
 function squareRows(data){if(Array.isArray(data))return data;for(let k of ['shifts','scheduled_shifts','results','data'])if(Array.isArray(data&&data[k]))return data[k];return []}
 function squareName(row){let v=pick(row,['display_name','name','team_member_name','employee_name','team_member.display_name','team_member.name','employee.name','team_member.given_name']);if(v)return String(v).trim();let first=pick(row,['first_name','team_member.first_name','team_member.given_name']),last=pick(row,['last_name','team_member.last_name','team_member.family_name']);return [first,last].filter(Boolean).join(' ').trim()}
@@ -402,20 +385,49 @@ function squareEnd(row){return pick(row,['end_at','end','end_time','endAt','shif
 function squareJob(row){return String(pick(row,['job_title','jobTitle','role','position','job.title','team_member.job_title'])||'').toLowerCase().trim()}
 function clockFromISO(v){if(!v)return '';let d=new Date(v);if(isNaN(d))return String(v);return d.toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'})}
 function dateKeyCentral(v){let d=new Date(v);if(isNaN(d))return '';let p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).reduce((o,x)=>(o[x.type]=x.value,o),{});return p.year+'-'+p.month+'-'+p.day}
+function applyManualTodaySchedule(){let all=getWeeklySchedules(),wk=scheduleWeekStart(new Date()),week=all[wk]||{},today=dayKey(),rec=week[today]||{};S.startTimes={};S.endTimes={};people.forEach(p=>{let n=p[0],r=rec[n];if(r&&r.in)S.startTimes[n]=r.in;if(r&&r.out)S.endTimes[n]=r.out});squareScheduledNames=null;render()}
 async function applyTodaySchedule(){
-  S.onBreak=S.onBreak||{};squareSyncStatus='connecting';render();let bounds=squareWeekBounds(),url=SQUARE_SCHEDULE_URL+'?start='+encodeURIComponent(bounds.start)+'&end='+encodeURIComponent(bounds.end);
+  S.onBreak=S.onBreak||{};let bounds=squareWeekBounds(),url=SQUARE_SCHEDULE_URL+'?start='+encodeURIComponent(bounds.start)+'&end='+encodeURIComponent(bounds.end);
   try{
-    let res=await fetch(url,{cache:'no-store'});if(!res.ok)throw new Error('Square schedule '+res.status);let data=await res.json(),rows=squareRows(data),today=dateKeyCentral(new Date()),by={};
-    rows.forEach(row=>{let job=squareJob(row);if(job&&job!=='sever'&&job!=='server'&&job!=='lead server')return;let st=squareStart(row),en=squareEnd(row);if(!st||dateKeyCentral(st)!==today)return;let person=matchSquarePerson(squareName(row));if(!person)return;let n=person[0];by[n]={in:clockFromISO(st),out:clockFromISO(en),start:new Date(st).getTime()}});
-    let names=Object.keys(by).sort((a,b)=>by[a].start-by[b].start);S.startTimes={};S.endTimes={};names.forEach(n=>{S.startTimes[n]=by[n].in;S.endTimes[n]=by[n].out});squareScheduledNames=names;S.active=S.active.filter(n=>names.includes(n));if(S.turn>=S.active.length)S.turn=0;squareSyncStatus='live';render();
-  }catch(e){console.warn('Square schedule unavailable.',e);squareScheduledNames=[];S.startTimes={};S.endTimes={};S.active=[];squareSyncStatus='unavailable';render()}
+    let res=await fetch(url,{cache:'no-store'});if(!res.ok)throw new Error('Square schedule '+res.status);let data=await res.json(),rows=squareRows(data),today=dayKey(),by={};
+    rows.forEach(row=>{let job=squareJob(row);if(job&&job!=='sever'&&job!=='server'&&job!=='lead server')return;let st=squareStart(row),en=squareEnd(row);if(!st||dateKeyCentral(st)!==today)return;let raw=squareName(row),person=people.find(p=>raw&&raw.toLowerCase().includes(p[0].toLowerCase()));if(!person)return;let n=person[0];by[n]={in:clockFromISO(st),out:clockFromISO(en),start:new Date(st).getTime()}});
+    let names=Object.keys(by).sort((a,b)=>by[a].start-by[b].start);if(!names.length&&rows.length)throw new Error('No matching server names in Square');S.startTimes={};S.endTimes={};names.forEach(n=>{S.startTimes[n]=by[n].in;S.endTimes[n]=by[n].out});squareScheduledNames=names;S.active=S.active.filter(n=>names.includes(n));sortActiveByStart();render();
+  }catch(e){console.warn('Square schedule unavailable; using saved weekly schedule.',e);applyManualTodaySchedule()}
 }
-function showSquareSchedule(){let c=document.getElementById('modalCard'),status=squareSyncStatus==='live'?'LIVE FROM SQUARE':(squareSyncStatus==='unavailable'?'SQUARE SCHEDULE UNAVAILABLE':'CONNECTING TO SQUARE'),rows=(squareScheduledNames||[]).map(n=>'<div class="historyRow"><b>'+n+'</b><br>'+ (S.startTimes[n]||'—')+' – '+(S.endTimes[n]||'—')+'</div>').join('');c.innerHTML='<h2>SQUARE SCHEDULE</h2><div class="squareStatus '+(squareSyncStatus==='live'?'squareLive':'squareBad')+'">'+status+'</div>'+(rows||'<p>No scheduled servers available for today.</p>')+'<button onclick="refreshSquareSchedule()">REFRESH SQUARE SCHEDULE</button><button onclick="showSettings()">BACK TO SETTINGS</button>';document.getElementById('modal').style.display='flex'}
-function refreshSquareSchedule(){closeModal();applyTodaySchedule();toast('Refreshing schedule from Square')}
+function showWeeklySchedule(){
+  managerAuth(()=>openWeeklySchedule());
+}
+function openWeeklySchedule(){
+  let wk=scheduleWeekStart(new Date()), dates=scheduleDates(wk), all=getWeeklySchedules(), week=all[wk]||{};
+  let head='<div class="hdr">SERVER</div>'+dates.map(k=>'<div class="hdr">'+new Date(k+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+'</div>').join('');
+  let rows=people.map(p=>{
+    let n=p[0];
+    return '<div class="name">'+n+'</div>'+dates.map(k=>{
+      let r=(week[k]||{})[n]||{};
+      return '<div class="cell"><input data-date="'+k+'" data-server="'+n+'" data-kind="in" placeholder="IN 10:00 AM" value="'+(r.in||'')+'"><input data-date="'+k+'" data-server="'+n+'" data-kind="out" placeholder="OUT 4:00 PM" value="'+(r.out||'')+'"></div>';
+    }).join('');
+  }).join('');
+  let c=document.getElementById('modalCard');
+  c.innerHTML='<h2>WEEKLY SERVER SCHEDULE</h2><div class="managerHint">Manager only • Week of '+new Date(wk+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+'</div><div class="weekScroll"><div class="weekGrid">'+head+rows+'</div></div><button onclick="saveWeekAndClose()">SAVE WEEK</button><button onclick="showSettings()">CANCEL</button>';
+  document.getElementById('modal').style.display='flex';
+}
+function saveWeekAndClose(){
+  let wk=scheduleWeekStart(new Date()), all=getWeeklySchedules(), week=all[wk]||{};
+  document.querySelectorAll('.weekGrid input').forEach(inp=>{
+    let k=inp.dataset.date,n=inp.dataset.server,kind=inp.dataset.kind;
+    week[k]=week[k]||{}; week[k][n]=week[k][n]||{};
+    week[k][n][kind]=inp.value.trim();
+  });
+  all[wk]=week; saveWeeklySchedules(all);
+  closeModal(); applyTodaySchedule();
+  toast('Week saved — today’s scheduled server times updated in Section 1');
+}
+
+
 function managerEndOfDay(){
  managerAuth(()=>{
   let c=document.getElementById('modalCard');
-  c.innerHTML='<h2>END OF DAY</h2><div class="managerHint">Save today’s totals and history, then clear the active floor for the next business day.<br><b>Your Square schedule connection will NOT be changed.</b></div><button onclick="confirmEndOfDay()">CONFIRM END OF DAY</button><button onclick="closeModal()">CANCEL</button>';
+  c.innerHTML='<h2>END OF DAY</h2><div class="managerHint">Save today’s totals and history, then clear the active floor for the next business day.<br><b>Your weekly server schedule will NOT be erased.</b></div><button onclick="confirmEndOfDay()">CONFIRM END OF DAY</button><button onclick="closeModal()">CANCEL</button>';
   document.getElementById('modal').style.display='flex';
  });
 }
@@ -428,13 +440,12 @@ function confirmEndOfDay(){
  S.assign={}; S.seated={}; S.covers={}; S.tablesServed={}; S.nextIndex=0;
  saveLive();
  closeModal(); render();
- toast('End of Day saved — floor cleared; Square schedule kept');
+ toast('End of Day saved — floor cleared; weekly schedule kept');
 }
 
-function showSettings(){let c=document.getElementById('modalCard'),status=squareSyncStatus==='live'?'LIVE FROM SQUARE':(squareSyncStatus==='unavailable'?'SQUARE SCHEDULE UNAVAILABLE':'CONNECTING TO SQUARE');c.innerHTML=`<h2>SETTINGS</h2><div class="squareStatus ${squareSyncStatus==='live'?'squareLive':'squareBad'}">${status}</div><button onclick="showSquareSchedule()">SQUARE SCHEDULE</button><button onclick="managerEndOfDay()">END OF DAY</button><button onclick="showHistoryMenu()">HISTORY — DAY / MONTH</button><button onclick="showManagerAccess()">MANAGER ACCESS</button><button onclick="closeModal()">CLOSE</button>`;document.getElementById('modal').style.display='flex'}
-function showManagerAccess(){let c=document.getElementById('modalCard');c.innerHTML=`<h2>MANAGER ACCESS</h2><div class="managerHint">Tap your name, then use one private 4-digit PIN box.</div><div class="managerSelectGrid"><button class="mgrCourtney" onclick="selectManager('Courtney')">COURTNEY</button><button class="mgrAlex" onclick="selectManager('Alex')">ALEX</button><button class="mgrBart" onclick="selectManager('Bart')">BART</button><button class="mgrRobert" onclick="selectManager('Robert')">ROBERT</button></div><div id="managerPinArea" class="managerPinArea"></div><div class="managerActions"><button onclick="newShift()">START NEW SHIFT</button><button onclick="showSettings()">BACK TO SETTINGS</button></div>`;document.getElementById('modal').style.display='flex';selectManager(selectedManager)}
-function selectManager(n){selectedManager=n;let pins=getManagerPins(),a=document.getElementById('managerPinArea');if(!a)return;a.innerHTML='<label style="display:block;font-size:18px;font-weight:900;margin-bottom:8px">'+n.toUpperCase()+' — 4-DIGIT PIN</label><input id="selectedManagerPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="'+(pins[n]||'')+'"><button onclick="saveSelectedManagerPin()" style="margin-top:12px">SAVE PIN</button>'}
-function saveSelectedManagerPin(){let v=document.getElementById('selectedManagerPin').value;if(v&&!/^\d{4}$/.test(v)){toast('PIN must be exactly 4 digits');return}let p=getManagerPins();p[selectedManager]=v;localStorage.setItem('rcfManagerPins',JSON.stringify(p));toast(selectedManager+' PIN saved')}
+function showSettings(){let c=document.getElementById('modalCard');c.innerHTML=`<h2>SETTINGS</h2><button onclick="showWeeklySchedule()">WEEKLY SERVER SCHEDULE</button><button onclick="managerEndOfDay()">END OF DAY</button><button onclick="showHistoryMenu()">HISTORY — DAY / MONTH</button><button onclick="showManagerAccess()">MANAGER ACCESS</button><button onclick="closeModal()">CLOSE</button>`;document.getElementById('modal').style.display='flex'}
+function showManagerAccess(){let pins=getManagerPins(),c=document.getElementById('modalCard');c.innerHTML=`<h2>MANAGER ACCESS</h2><div class="managerHint">Each manager can set a private 4-digit PIN. Digits stay masked.</div><div class="managerGrid"><div class="managerBox mgrCourtney"><label>COURTNEY</label><input id="pinCourtney" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="${pins.Courtney||''}"></div><div class="managerBox mgrAlex"><label>ALEX</label><input id="pinAlex" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="${pins.Alex||''}"></div><div class="managerBox mgrBart"><label>BART</label><input id="pinBart" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="${pins.Bart||''}"></div><div class="managerBox mgrRobert"><label>ROBERT</label><input id="pinRobert" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="${pins.Robert||''}"></div></div><div class="managerActions"><button onclick="saveManagerPins()">SAVE PINS</button><button onclick="newShift()">START NEW SHIFT</button><button onclick="showSettings()">BACK TO SETTINGS</button></div>`;document.getElementById('modal').style.display='flex'}
+function saveManagerPins(){let p={Courtney:document.getElementById('pinCourtney').value,Alex:document.getElementById('pinAlex').value,Bart:document.getElementById('pinBart').value,Robert:document.getElementById('pinRobert').value};if(Object.values(p).some(v=>v&&!/^\d{4}$/.test(v))){toast('Each PIN must be exactly 4 digits');return}localStorage.setItem('rcfManagerPins',JSON.stringify(p));toast('Manager PINs saved')}
 function newShift(){archiveCurrentDay();S={active:[],room:null,roomSide:null,occ:{},counts:{},guestCounts:{},served:[],assign:{},mode:'seat',hist:[],swapFirst:null,turn:0,startTimes:{},endTimes:{},onBreak:{}};closeModal();applyTodaySchedule();toast('New shift ready — previous day saved')}
 function closeModal(){document.getElementById('modal').style.display='none'}
 function ensureFlippedRooms(){
