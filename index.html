@@ -306,7 +306,19 @@ function chooseParty(t,n,before){
  let c=document.getElementById('modalCard');c.innerHTML='<h2>Seat '+t+'</h2><p><b>'+n+'</b> • Select party size</p><select id="partyPick" size="6" style="font-size:24px;width:100%;padding:8px">'+opts+'</select><button onclick="confirmSeat(\''+t+'\',\''+n+'\')">SEAT PARTY</button><button onclick="closeModal()">CANCEL</button>';
  window._seatBefore=before;document.getElementById('modal').style.display='flex';
 }
-function confirmSeat(t,n){let size=parseInt(document.getElementById('partyPick').value||1),assigned=n,bypassedMark=false;if(String(n).toLowerCase()==='mark'&&(size===6||size===7)){let alt=nextEligibleAfter(n);if(alt&&alt!==n){assigned=alt;bypassedMark=true}}S.occ[t]={server:assigned,party:size,seatedAt:Date.now()};S.counts[assigned]=(S.counts[assigned]||0)+1;S.guestCounts[assigned]=(S.guestCounts[assigned]||0)+size;S.served.push({table:t,server:assigned,party:size,time:Date.now()});if(!bypassedMark){let seatedIndex=S.active.indexOf(assigned);S.turn=seatedIndex>=0?(seatedIndex+1)%Math.max(1,S.active.length):(S.turn+1)%Math.max(1,S.active.length);}S.hist.push(window._seatBefore);closeModal();render();if(bypassedMark)toast('Mark skipped for '+size+' guests — seated with '+assigned+'. Mark remains next.')}
+function confirmSeat(t,n){
+ let size=parseInt(document.getElementById('partyPick').value||1);
+ if(n==='Mark'&&size>=6){
+   let avail=onFloorServers().filter(x=>x!=='Mark');
+   let replacement=null;
+   for(let i=1;i<=S.active.length;i++){let x=S.active[(S.turn+i)%S.active.length];if(avail.includes(x)){replacement=x;break}}
+   if(!replacement){toast('No eligible server available for this 6+ top');return}
+   n=replacement;
+ } else {
+   let idx=S.active.indexOf(n);if(idx>=0)S.turn=(idx+1)%Math.max(1,S.active.length);
+ }
+ S.occ[t]={server:n,party:size,seatedAt:Date.now()};S.counts[n]=(S.counts[n]||0)+1;S.guestCounts[n]=(S.guestCounts[n]||0)+size;S.served.push({table:t,server:n,party:size,time:Date.now()});S.hist.push(window._seatBefore);closeModal();render()
+}
 function editParty(t){let o=S.occ[t],old=o.party||0,opts='';for(let i=1;i<=20;i++)opts+='<option value="'+i+'" '+(i===old?'selected':'')+'>'+i+' guest'+(i===1?'':'s')+'</option>';let c=document.getElementById('modalCard');c.innerHTML='<h2>'+t+' • '+o.server+'</h2><p>Edit party size</p><select id="partyEdit" size="6" style="font-size:24px;width:100%;padding:8px">'+opts+'</select><button onclick="savePartyEdit(\''+t+'\')">SAVE</button><button onclick="closeModal()">CANCEL</button>';document.getElementById('modal').style.display='flex'}
 function savePartyEdit(t){let o=S.occ[t],v=parseInt(document.getElementById('partyEdit').value||o.party),diff=v-o.party;o.party=v;S.guestCounts[o.server]=(S.guestCounts[o.server]||0)+diff;let last=[...S.served].reverse().find(x=>x.table===t&&x.server===o.server);if(last)last.party=v;closeModal();render()}
 function occServer(v){return v&&typeof v==='object'?v.server:v}
@@ -326,18 +338,8 @@ function nextServer(){
  let avail=onFloorServers();
  if(!avail.length)return null;
  for(let i=0;i<S.active.length;i++){
-   let n=S.active[(S.turn+i)%S.active.length];
-   if(avail.includes(n))return n;
- }
- return avail[0];
-}
-function nextEligibleAfter(name){
- let avail=onFloorServers();
- if(!avail.length)return null;
- let start=S.active.indexOf(name);
- for(let i=1;i<=S.active.length;i++){
-   let n=S.active[(start+i+S.active.length)%S.active.length];
-   if(avail.includes(n))return n;
+   let idx=(S.turn+i)%S.active.length,n=S.active[idx];
+   if(avail.includes(n)){S.turn=idx;return n;}
  }
  return null;
 }
