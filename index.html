@@ -57,18 +57,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Robert's Host">
 <link rel="apple-touch-icon" href="icon-180.png">
-<script>
-/* Production update policy: do not let an old service worker pin a stale Host Stand build on iPad. */
-if('serviceWorker' in navigator){
-  window.addEventListener('load',async()=>{
-    try{
-      const regs=await navigator.serviceWorker.getRegistrations();
-      for(const reg of regs) await reg.unregister();
-      if(window.caches){for(const key of await caches.keys()) await caches.delete(key);}
-    }catch(e){console.warn('Cache cleanup skipped',e);}
-  });
-}
-</script>
+<script>if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));}</script>
 
 <style>
 /* Room setup: teal */
@@ -321,15 +310,23 @@ function confirmFloorReassign(){
 function cancelFloorReassign(){S.reassign=null;S.mode='seat';let b=document.getElementById('reassignBar');if(b)b.remove();render();toast('Reassign canceled')}
 
 function isLargeTable(t){return ['A3','A4','B3','B4','B5'].includes(t)}
-function serverForTable(t){let n=S.assign[t]||nextServer();if(n!=='Mark'||!isLargeTable(t))return {server:n,holdTurn:false};let avail=onFloorServers();for(let i=1;i<=S.active.length;i++){let alt=S.active[(S.turn+i)%S.active.length];if(alt&&alt!=='Mark'&&avail.includes(alt))return {server:alt,holdTurn:true}}return {server:null,holdTurn:true}}
+function serverForTable(t){
+ let avail=onFloorServers(),base=S.assign[t]||nextServer();
+ if(base&&eligibleForParty(base,1))return {server:base,holdTurn:base!==S.active[S.turn]};
+ for(let i=0;i<S.active.length;i++){
+  let alt=S.active[(S.turn+i)%S.active.length];
+  if(avail.includes(alt)&&eligibleForParty(alt,1))return {server:alt,holdTurn:alt!==S.active[S.turn]};
+ }
+ return {server:null,holdTurn:true};
+}
 function chooseParty(t,n,before,holdTurn){
- let opts='';for(let i=1;i<=20;i++)opts+='<option value="'+i+'">'+i+' guest'+(i===1?'':'s')+'</option>';
+ let opts='';for(let i=1;i<=(n==='Mark'?4:20);i++)opts+='<option value="'+i+'">'+i+' guest'+(i===1?'':'s')+'</option>';
  let c=document.getElementById('modalCard');c.innerHTML='<h2>Seat '+t+'</h2><p><b>'+n+'</b> • Select party size</p><select id="partyPick" size="6" style="font-size:24px;width:100%;padding:8px">'+opts+'</select><button onclick="confirmSeat(\''+t+'\',\''+n+'\')">SEAT PARTY</button><button onclick="closeModal()">CANCEL</button>';
  window._seatBefore=before;window._holdServerTurn=!!holdTurn;document.getElementById('modal').style.display='flex';
 }
-function confirmSeat(t,n){let size=parseInt(document.getElementById('partyPick').value||1);S.occ[t]={server:n,party:size,seatedAt:Date.now()};S.counts[n]=(S.counts[n]||0)+1;S.guestCounts[n]=(S.guestCounts[n]||0)+size;S.served.push({table:t,server:n,party:size,time:Date.now()});if(!window._holdServerTurn)S.turn=(S.turn+1)%Math.max(1,S.active.length);window._holdServerTurn=false;S.hist.push(window._seatBefore);closeModal();render()}
+function confirmSeat(t,n){let size=parseInt(document.getElementById('partyPick').value||1);if(n==='Mark'&&size>4){toast('Mark is limited to four guests');return}if(sectionFull(n)){toast(n+' section is full');return}S.occ[t]={server:n,party:size,seatedAt:Date.now()};S.counts[n]=(S.counts[n]||0)+1;S.guestCounts[n]=(S.guestCounts[n]||0)+size;S.served.push({table:t,server:n,party:size,time:Date.now()});if(!window._holdServerTurn)S.turn=(S.turn+1)%Math.max(1,S.active.length);else {let idx=S.active.indexOf(n);if(idx>=0&&idx===S.turn)S.turn=(S.turn+1)%Math.max(1,S.active.length)}window._holdServerTurn=false;S.hist.push(window._seatBefore);closeModal();render()}
 function editParty(t){let o=S.occ[t],old=o.party||0,opts='';for(let i=1;i<=20;i++)opts+='<option value="'+i+'" '+(i===old?'selected':'')+'>'+i+' guest'+(i===1?'':'s')+'</option>';let c=document.getElementById('modalCard');c.innerHTML='<h2>'+t+' • '+o.server+'</h2><p>Edit party size</p><select id="partyEdit" size="6" style="font-size:24px;width:100%;padding:8px">'+opts+'</select><button onclick="savePartyEdit(\''+t+'\')">SAVE</button><button onclick="closeModal()">CANCEL</button>';document.getElementById('modal').style.display='flex'}
-function savePartyEdit(t){let o=S.occ[t],v=parseInt(document.getElementById('partyEdit').value||o.party),diff=v-o.party;o.party=v;S.guestCounts[o.server]=(S.guestCounts[o.server]||0)+diff;let last=[...S.served].reverse().find(x=>x.table===t&&x.server===o.server);if(last)last.party=v;closeModal();render()}
+function savePartyEdit(t){let o=S.occ[t],v=parseInt(document.getElementById('partyEdit').value||o.party);if(o.server==='Mark'&&v>4){toast('Mark is limited to four guests');return}let diff=v-o.party;o.party=v;S.guestCounts[o.server]=(S.guestCounts[o.server]||0)+diff;let last=[...S.served].reverse().find(x=>x.table===t&&x.server===o.server);if(last)last.party=v;closeModal();render()}
 function occServer(v){return v&&typeof v==='object'?v.server:v}
 function elapsed(ts){if(!ts)return '';let m=Math.floor((Date.now()-ts)/60000);return (m<60?m+'m':Math.floor(m/60)+'h '+(m%60)+'m')}
 function timeMin(v){if(!v)return null;let m=String(v).trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i);if(!m)return null;let h=+m[1],mi=+(m[2]||0),ap=(m[3]||'').toUpperCase();if(ap==='PM'&&h<12)h+=12;if(ap==='AM'&&h===12)h=0;return h*60+mi}
@@ -343,14 +340,19 @@ function onFloorServers(){
    return true;
  });
 }
+function sectionFull(n){
+ const mine=Object.keys(S.assign||{}).filter(t=>S.assign[t]===n);
+ return mine.length>0 && mine.every(t=>!!S.occ[t]);
+}
+function eligibleForParty(n,size){return !!n && !(n==='Mark'&&Number(size)>4) && !sectionFull(n)}
 function nextServer(){
  let avail=onFloorServers();
  if(!avail.length)return null;
  for(let i=0;i<S.active.length;i++){
    let n=S.active[(S.turn+i)%S.active.length];
-   if(avail.includes(n))return n;
+   if(avail.includes(n)&&eligibleForParty(n,1))return n;
  }
- return avail[0];
+ return avail.find(n=>eligibleForParty(n,1))||null;
 }
 function resetFloor(){S.occ={};S.counts={};S.guestCounts={};S.served=[];S.active.forEach(n=>{S.counts[n]=0;S.guestCounts[n]=0});S.turn=0;S.hist=[];saveLive();render();toast('Floor reset')}
 function clearAll(){let before=JSON.stringify({occ:S.occ,counts:S.counts,guestCounts:S.guestCounts,served:S.served,turn:S.turn});S.occ={};S.hist.push(before);saveLive();render();toast('All tables reopened — shift totals kept')}
@@ -471,16 +473,16 @@ async function applyTodaySchedule(){
     S.startTimes={};S.endTimes={};
     names.forEach(n=>{S.startTimes[n]=by[n].in;S.endTimes[n]=by[n].out});
     squareScheduledNames=names;
-    S.active=S.active.filter(n=>names.includes(n));
+    S.active=names.filter(n=>{let now=new Date(),minute=now.getHours()*60+now.getMinutes(),st=timeMin(S.startTimes[n]),en=timeMin(S.endTimes[n]);return (st===null||minute>=st)&&(en===null||minute<en)});
     if(S.turn>=S.active.length)S.turn=0;
-    squareSyncStatus='live';
+    saveLive();squareSyncStatus='live';
     squareDiagnostics.status=names.length?'Connected — '+names.length+' server(s) accepted':'Connected — 0 servers accepted';
     render();
   }catch(e){
     console.warn('Square schedule unavailable.',e);
     squareDiagnostics.status='Square diagnostic failed';
     squareDiagnostics.error=(e&&e.message)?e.message:String(e);
-    squareScheduledNames=[];S.startTimes={};S.endTimes={};S.active=[];
+    /* Preserve existing shift and floor data during temporary Square outage. */
     squareSyncStatus='unavailable';render()
   }
 }
@@ -507,23 +509,37 @@ function managerEndOfDay(){
   document.getElementById('modal').style.display='flex';
  });
 }
+function safelyArchiveDay(key){
+ const k=key||S.businessDate||dayKey(),store=JSON.parse(localStorage.getItem('rcfDailyHistory')||'{}');
+ if(!store[k] || (S.served||[]).length){
+  const snapshot=currentSnapshot();snapshot.date=k;
+  store[k]=snapshot;
+  localStorage.setItem('rcfDailyHistory',JSON.stringify(store));
+ }
+ const verify=JSON.parse(localStorage.getItem('rcfDailyHistory')||'{}');
+ if(!verify[k]||verify[k].date!==k)throw Error('History write could not be verified');
+ return true;
+}
+function resetAfterArchive(){
+ S.assign={};S.occ={};S.counts={};S.guestCounts={};S.served=[];S.hist=[];S.swapFirst=null;S.turn=0;S.mode='seat';S.room=null;S.roomSide=null;S.onBreak={};S.active=[];S.startTimes={};S.endTimes={};S.businessDate=dayKey();
+ if(!saveLive())throw Error('Unable to save reset state');
+}
 function confirmEndOfDay(){
- try{
-  if(typeof saveDailyHistory==='function') saveDailyHistory();
-  else if(typeof saveHistory==='function') saveHistory();
- }catch(e){}
- let keepStart=S.startTimes||{}, keepEnd=S.endTimes||{};
- S.assign={}; S.occ={}; S.counts={}; S.guestCounts={}; S.served=[]; S.hist=[]; S.swapFirst=null; S.turn=0; S.mode='seat'; S.room=null; S.roomSide=null; S.onBreak={}; S.startTimes=keepStart; S.endTimes=keepEnd;
- saveLive();
- closeModal(); render();
- toast('End of Day saved — floor cleared; Square schedule kept');
+ try{safelyArchiveDay();resetAfterArchive();closeModal();render();applyTodaySchedule();toast('History verified — new day ready')}
+ catch(e){console.error(e);toast('NOT CLEARED: history save failed');alert('End of Day was stopped to protect your records: '+e.message)}
+}
+function checkBusinessDay(){
+ if(!S.businessDate){S.businessDate=dayKey();saveLive();return}
+ if(S.businessDate===dayKey())return;
+ try{safelyArchiveDay(S.businessDate);resetAfterArchive();render();applyTodaySchedule();toast('Previous day saved; new day started')}
+ catch(e){console.error(e);toast('Day rollover blocked: history not saved')}
 }
 
 function showSettings(){let c=document.getElementById('modalCard'),status=squareSyncStatus==='live'?'LIVE FROM SQUARE':(squareSyncStatus==='unavailable'?'SQUARE SCHEDULE UNAVAILABLE':'CONNECTING TO SQUARE');c.innerHTML=`<h2>SETTINGS</h2><div class="squareStatus ${squareSyncStatus==='live'?'squareLive':'squareBad'}">${status}</div><button onclick="showSquareSchedule()">SQUARE SCHEDULE</button><button onclick="managerEndOfDay()">END OF DAY</button><button onclick="managerAuth(showHistoryMenu)">HISTORY — DAY / MONTH 🔒</button><button onclick="showManagerAccess()">MANAGER ACCESS</button><button onclick="closeModal()">CLOSE</button>`;document.getElementById('modal').style.display='flex'}
 function showManagerAccess(){let c=document.getElementById('modalCard');c.innerHTML=`<h2>MANAGER ACCESS</h2><div class="managerHint">Tap your name, then use one private 4-digit PIN box.</div><div class="managerSelectGrid"><button class="mgrCourtney" onclick="selectManager('Courtney')">COURTNEY</button><button class="mgrAlex" onclick="selectManager('Alex')">ALEX</button><button class="mgrBart" onclick="selectManager('Bart')">BART</button><button class="mgrRobert" onclick="selectManager('Robert')">ROBERT</button></div><div id="managerPinArea" class="managerPinArea"></div><div class="managerActions"><button onclick="newShift()">START NEW SHIFT</button><button onclick="showSettings()">BACK TO SETTINGS</button></div>`;document.getElementById('modal').style.display='flex';selectManager(selectedManager)}
 function selectManager(n){selectedManager=n;let pins=getManagerPins(),a=document.getElementById('managerPinArea');if(!a)return;a.innerHTML='<label style="display:block;font-size:18px;font-weight:900;margin-bottom:8px">'+n.toUpperCase()+' — 4-DIGIT PIN</label><input id="selectedManagerPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" value="'+(pins[n]||'')+'"><button onclick="saveSelectedManagerPin()" style="margin-top:12px">SAVE PIN</button>'}
 function saveSelectedManagerPin(){let v=document.getElementById('selectedManagerPin').value;if(v&&!/^\d{4}$/.test(v)){toast('PIN must be exactly 4 digits');return}let p=getManagerPins();p[selectedManager]=v;localStorage.setItem('rcfManagerPins',JSON.stringify(p));toast(selectedManager+' PIN saved')}
-function newShift(){archiveCurrentDay();S={active:[],room:null,roomSide:null,occ:{},counts:{},guestCounts:{},served:[],assign:{},mode:'seat',hist:[],swapFirst:null,turn:0,startTimes:{},endTimes:{},onBreak:{}};saveLive();closeModal();applyTodaySchedule();toast('New shift ready — previous day saved')}
+function newShift(){try{safelyArchiveDay()}catch(e){alert('Cannot start new shift: history not saved');return}S={active:[],room:null,roomSide:null,occ:{},counts:{},guestCounts:{},served:[],assign:{},mode:'seat',hist:[],swapFirst:null,turn:0,startTimes:{},endTimes:{},onBreak:{},businessDate:dayKey()};saveLive();closeModal();applyTodaySchedule();toast('New shift ready — previous day saved')}
 function closeModal(){document.getElementById('modal').style.display='none'}
 function ensureFlippedRooms(){
  let f=document.getElementById('floor'),orig=f.querySelector('img:not(.floorHalf)');
@@ -549,7 +565,7 @@ function drawHits(){
 }
 function render(){ensureFlippedRooms();renderServers();document.querySelectorAll('.room').forEach(x=>x.classList.toggle('active',x.dataset.room===S.room));document.getElementById('seatBtn').classList.toggle('active',S.mode==='seat');document.getElementById('clearBtn').classList.toggle('active',S.mode==='clear');let n=nextServer();document.getElementById('nextName').textContent=n||'—';document.getElementById('nextRole').textContent=n?(n==='Courtney'?'(Floor Lead) • ON FLOOR NOW':'ON FLOOR NOW'):(S.active.length?'NO SCHEDULED SERVER IS ON FLOOR YET':'');let at=activeTables(),seated=at.filter(t=>S.occ[t]).length;document.getElementById('openNum').textContent=at.length-seated;document.getElementById('seatedNum').textContent=seated;drawHits()}
 function toast(s){let t=document.getElementById('toast');t.textContent=s;t.style.display='block';clearTimeout(window.tt);window.tt=setTimeout(()=>t.style.display='none',1600)}
-function clock(){let d=new Date(),opts={weekday:'short',month:'short',day:'numeric'};document.getElementById('clock').innerHTML=d.toLocaleDateString('en-US',opts)+'<br>'+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}setInterval(clock,1000);setInterval(()=>{if(Object.keys(S.occ).length)drawHits()},30000);clock();loadLive();render();
+function clock(){let d=new Date(),opts={weekday:'short',month:'short',day:'numeric'};document.getElementById('clock').innerHTML=d.toLocaleDateString('en-US',opts)+'<br>'+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}setInterval(clock,1000);setInterval(()=>{if(Object.keys(S.occ).length)drawHits()},30000);clock();loadLive();checkBusinessDay();render();
 setInterval(saveLive,2000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveLive()});window.addEventListener('pagehide',saveLive);
-applyTodaySchedule();
+applyTodaySchedule();setInterval(()=>{checkBusinessDay();applyTodaySchedule()},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkBusinessDay();applyTodaySchedule()}});
 </script></body></html>
