@@ -103,10 +103,10 @@
 <div class="bottom"><section class="box"><div class="title">👥 1. SELECT SERVERS ON SHIFT</div><div class="servers" id="servers"></div></section><section class="middle"><div class="box"><div class="title">👤 2. CHOOSE ROOM SETUP</div><div class="rooms"><button class="room" data-room="both" onclick="chooseRoom('both')">BOTH ROOMS<br><small>4 SERVERS</small></button><button class="room" data-room="one3" onclick="chooseRoom('one3')">ONE ROOM ONLY<br><small>3 SERVERS</small></button><button class="room" data-room="one2" onclick="chooseRoom('one2')">ONE ROOM ONLY<br><small>2 SERVERS</small></button></div></div><div class="box"><div class="title">👤 3. MANAGE TABLES</div><div class="manage"><button class="action seat active" id="seatBtn" onclick="setMode('seat')">SEAT TABLE</button><button class="action clear" id="clearBtn" onclick="setMode('clear')">CLEAR TABLE</button><button class="action reset" onclick="managerResetFloor()">🔒 RESET FLOOR</button></div></div></section><section class="box"><div class="title">👥 4. QUICK ACTIONS</div><div class="quick"><button onclick="viewCounts()">▥ VIEW SERVER COUNTS</button><button onclick="swapMode()">⇄ SWAP TABLES</button><button onclick="undo()">↶ UNDO LAST</button><button onclick="managerClearAll()">🔒 CLEAR ALL TABLES</button></div></section></div>
 </div><div class="toast" id="toast"></div><div class="modal" id="modal"><div class="card" id="modalCard"></div></div>
 <script>
-const people=[['Lindsey','lindsay',''],['Sophie','sophie',''],['Savannah','savannah',''],['Mark','mark',''],['Ashley','ashley',''],['Alisha','alisha',''],['Dezza','dezza','']];
+const people=[['Courtney','courtney','FOHS'],['Lindsey','lindsay',''],['Sophie','sophie',''],['Savannah','savannah',''],['Mark','mark',''],['Ashley','ashley',''],['Alisha','alisha',''],['Dezza','dezza','']];
 let S={active:[],room:null,roomSide:null,occ:{},counts:{},guestCounts:{},served:[],assign:{},mode:'seat',hist:[],swapFirst:null,turn:0,startTimes:{},endTimes:{},onBreak:{}};
 function saveLive(){try{localStorage.setItem('rcfHostStandLive',JSON.stringify(S));return true}catch(e){console.warn('Live state save failed',e);return false}}
-function loadLive(){try{let raw=localStorage.getItem('rcfHostStandLive');if(!raw)return false;let saved=JSON.parse(raw);if(!saved||typeof saved!=='object')return false;S=Object.assign(S,saved);S.active=Array.isArray(S.active)?S.active.filter(n=>n!=='Courtney'):[];S.occ=S.occ||{};S.counts=S.counts||{};S.guestCounts=S.guestCounts||{};S.served=Array.isArray(S.served)?S.served:[];S.assign=S.assign||{};S.hist=Array.isArray(S.hist)?S.hist:[];S.startTimes=S.startTimes||{};S.endTimes=S.endTimes||{};S.onBreak=S.onBreak||{};return true}catch(e){console.warn('Live state load failed',e);return false}}
+function loadLive(){try{let raw=localStorage.getItem('rcfHostStandLive');if(!raw)return false;let saved=JSON.parse(raw);if(!saved||typeof saved!=='object')return false;S=Object.assign(S,saved);S.active=Array.isArray(S.active)?S.active:[];S.occ=S.occ||{};S.counts=S.counts||{};S.guestCounts=S.guestCounts||{};S.served=Array.isArray(S.served)?S.served:[];S.assign=S.assign||{};S.hist=Array.isArray(S.hist)?S.hist:[];S.startTimes=S.startTimes||{};S.endTimes=S.endTimes||{};S.onBreak=S.onBreak||{};return true}catch(e){console.warn('Live state load failed',e);return false}}
 const SQUARE_SCHEDULE_URL='https://roberts-comfort-food-square.russellllc26.workers.dev/schedule';
 let squareScheduledNames=[];
 let squareSyncStatus='connecting';
@@ -182,13 +182,13 @@ function assignSections(){
  }else assignPlanned(S.roomSide,S.active);
 }
 
-function renderServers(){let el=document.getElementById('servers');el.innerHTML='';if(squareSyncStatus==='connecting'){el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px">CONNECTING TO SQUARE…</div>';return}if(squareSyncStatus==='unavailable'){el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px;color:#ff9b9b">SQUARE SCHEDULE UNAVAILABLE</div>';return}let list=people.filter(p=>squareScheduledNames.includes(p[0]));list.sort((a,b)=>(timeMin(S.startTimes[a[0]])??9999)-(timeMin(S.startTimes[b[0]])??9999));list.forEach(([n,c,r])=>{let b=document.createElement('button');b.className='server '+c+(S.active.includes(n)?' active':'');let st=(S.startTimes[n]||'NOT SET'),en=(S.endTimes[n]||'NOT SET'),br=S.onBreak&&S.onBreak[n];b.innerHTML='<span style="display:block;font-weight:1000;font-size:1.08em">'+n+'</span>'+(r?'<small style="display:block;font-weight:900">('+r+')</small>':'')+'<span style="display:block;margin-top:5px;font-size:.92em;font-weight:1000;line-height:1.15">SHIFT: '+st+' – '+en+(br?' • ON BREAK':'')+'</span>';b.onclick=()=>serverNameTap(n);el.appendChild(b)});if(!list.length)el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px">No servers scheduled today.</div>'}
+function renderServers(){S.active=S.active.filter(n=>n!=='Courtney');let el=document.getElementById('servers');el.innerHTML='';if(squareSyncStatus==='connecting'){el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px">CONNECTING TO SQUARE…</div>';return}if(squareSyncStatus==='unavailable'){el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px;color:#ff9b9b">SQUARE SCHEDULE UNAVAILABLE</div>';return}let list=people.filter(p=>squareScheduledNames.includes(p[0]));list.sort((a,b)=>(timeMin(S.startTimes[a[0]])??9999)-(timeMin(S.startTimes[b[0]])??9999));list.forEach(([n,c,r])=>{let b=document.createElement('button');b.className='server '+c+(S.active.includes(n)?' active':'');let st=(S.startTimes[n]||'NOT SET'),en=(S.endTimes[n]||'NOT SET'),br=S.onBreak&&S.onBreak[n];b.innerHTML='<span style="display:block;font-weight:1000;font-size:1.08em">'+n+'</span>'+(r?'<small style="display:block;font-weight:900">('+r+')</small>':'')+'<span style="display:block;margin-top:5px;font-size:.92em;font-weight:1000;line-height:1.15">SHIFT: '+st+' – '+en+(br?' • ON BREAK':'')+'</span>';b.onclick=()=>serverNameTap(n);el.appendChild(b)});if(!list.length)el.innerHTML='<div style="grid-column:1/-1;font-weight:900;padding:12px">No servers scheduled today.</div>'}
 function sortActiveByStart(){S.active.sort((a,b)=>(timeMin(S.startTimes[a])??9999)-(timeMin(S.startTimes[b])??9999))}
 function serverNameTap(n){
  if(S.room && S.active.includes(n)){showServerManagerMenu(n);return}
  toggleServer(n)
 }
-function toggleServer(n){let i=S.active.indexOf(n);if(i>=0){S.active.splice(i,1);if(S.turn>=S.active.length)S.turn=0}else{S.active.push(n);sortActiveByStart()}saveLive();render();toast(n+(i>=0?' removed':' selected'))}
+function toggleServer(n){if(n==='Courtney'){toast('Courtney is FOHS, not a server');return}let i=S.active.indexOf(n);if(i>=0){S.active.splice(i,1);if(S.turn>=S.active.length)S.turn=0}else{S.active.push(n);sortActiveByStart()}saveLive();render();toast(n+(i>=0?' removed':' selected'))}
 
 function getManagerPins(){try{return JSON.parse(localStorage.getItem('rcfManagerPins')||'{}')}catch(e){return {}}}
 function managerAuth(nextFn){
@@ -331,6 +331,7 @@ function occServer(v){return v&&typeof v==='object'?v.server:v}
 function elapsed(ts){if(!ts)return '';let m=Math.floor((Date.now()-ts)/60000);return (m<60?m+'m':Math.floor(m/60)+'h '+(m%60)+'m')}
 function timeMin(v){if(!v)return null;let m=String(v).trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i);if(!m)return null;let h=+m[1],mi=+(m[2]||0),ap=(m[3]||'').toUpperCase();if(ap==='PM'&&h<12)h+=12;if(ap==='AM'&&h===12)h=0;return h*60+mi}
 function onFloorServers(){
+ S.active=S.active.filter(n=>n!=='Courtney');
  let d=new Date(),now=d.getHours()*60+d.getMinutes();
  return S.active.filter(n=>{
    if(S.onBreak&&S.onBreak[n])return false;
@@ -344,7 +345,7 @@ function sectionFull(n){
  const mine=Object.keys(S.assign||{}).filter(t=>S.assign[t]===n);
  return mine.length>0 && mine.every(t=>!!S.occ[t]);
 }
-function eligibleForParty(n,size){return !!n && !(n==='Mark'&&Number(size)>4) && !sectionFull(n)}
+function eligibleForParty(n,size){return !!n && n!=='Courtney' && !(n==='Mark'&&Number(size)>4) && !sectionFull(n)}
 function nextServer(){
  let avail=onFloorServers();
  if(!avail.length)return null;
@@ -458,11 +459,11 @@ async function applyTodaySchedule(){
       let rawName=squareName(row),job=squareJob(row),st=squareStart(row),en=squareEnd(row),reasons=[];
       let shiftDate=st?dateKeyCentral(st):'';
       let person=matchSquarePerson(rawName);
-      if(normalizeName(rawName).split(' ')[0]==='courtney') reasons.push('FOHS supervisor — not eligible for server rotation');
       if(job&&job!=='sever'&&job!=='server'&&job!=='lead server') reasons.push('job title filtered: '+job);
       if(!st) reasons.push('missing start time');
       else if(!shiftIsToday(st,today)) reasons.push('not today ('+shiftDate+')');
       if(!person) reasons.push('name not matched: '+(rawName||'(blank)'));
+      if(person&&person[0]==='Courtney')reasons.push('FOHS supervisor excluded from seating');
       let detail={row:i+1,name:rawName||'(blank)',job:job||'(blank)',start:st||'(blank)',end:en||'(blank)',reason:reasons.join('; ')};
       if(reasons.length){squareDiagnostics.rejected.push(detail);return}
       let n=person[0];
@@ -473,7 +474,7 @@ async function applyTodaySchedule(){
     let names=Object.keys(by).sort((a,b)=>by[a].start-by[b].start);
     S.startTimes={};S.endTimes={};
     names.forEach(n=>{S.startTimes[n]=by[n].in;S.endTimes[n]=by[n].out});
-    squareScheduledNames=names.filter(n=>n!=='Courtney');
+    squareScheduledNames=names;
     S.active=names.filter(n=>n!=='Courtney').filter(n=>{let now=new Date(),minute=now.getHours()*60+now.getMinutes(),st=timeMin(S.startTimes[n]),en=timeMin(S.endTimes[n]);return (st===null||minute>=st)&&(en===null||minute<en)});
     if(S.turn>=S.active.length)S.turn=0;
     saveLive();squareSyncStatus='live';
